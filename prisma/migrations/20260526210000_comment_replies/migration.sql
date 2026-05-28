@@ -1,0 +1,11 @@
+-- Add self-referential parent relation to Comment for single-level threading.
+ALTER TABLE "Comment" ADD COLUMN "parentId" TEXT;
+
+CREATE INDEX "Comment_parentId_idx" ON "Comment"("parentId");
+
+ALTER TABLE "Comment"
+  ADD CONSTRAINT "Comment_parentId_fkey"
+  FOREIGN KEY ("parentId")
+  REFERENCES "Comment"("id")
+  ON DELETE CASCADE
+  ON UPDATE CASCADE;

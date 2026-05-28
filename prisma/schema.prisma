@@ -1,0 +1,226 @@
+generator client {
+  provider = "prisma-client-js"
+  // Pin the generated client to a stable, top-level location instead of
+  // letting Prisma drop it into a pnpm-hoisted `.pnpm/@prisma+client@.../`
+  // path. This makes `@prisma/client/default.js` (which does
+  // `require('.prisma/client/default')`) find the generated module from
+  // both the Next.js bundle AND from one-off Node scripts (tsx, esbuild,
+  // etc.) without per-script tricks.
+  output   = "../node_modules/.prisma/client"
+}
+
+// Prisma 7: connection URL is configured in prisma.config.ts (CLI) and
+// via the driver adapter in src/lib/prisma.ts (runtime).
+datasource db {
+  provider = "postgresql"
+}
+
+// ────────────────────────────────────────────────────────────
+//  Domain
+// ────────────────────────────────────────────────────────────
+
+enum UserLevel {
+  IRON
+  BRONZE
+  SILVER
+  GOLD
+  PLATINUM
+  DIAMOND
+  LEGEND
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  // Hashed password (bcrypt). Nullable because OAuth users won't have one.
+  password      String?
+
+  xp    Int       @default(0)
+  level UserLevel @default(IRON)
+
+  tracks   Track[]
+  comments Comment[]
+  votes    Vote[]
+
+  notificationsReceived Notification[] @relation("NotificationRecipient")
+  notificationsSent     Notification[] @relation("NotificationActor")
+
+  accounts Account[]
+  sessions Session[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Track {
+  id       String @id @default(cuid())
+  title    String
+  genre    String?
+  /** Denormalized cache pointing to the LATEST TrackVersion.audioUrl. */
+  audioUrl String
+  /** Denormalized cache pointing to the LATEST TrackVersion.duration. */
+  duration Float
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  comments Comment[]
+  versions TrackVersion[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([authorId])
+}
+
+model TrackVersion {
+  id            String  @id @default(cuid())
+  trackId       String
+  versionNumber Int
+  audioUrl      String
+  duration      Float
+  /**
+   * Pre-computed normalized waveform peaks (one entry per visual bin, typical
+   * length ~1800). Empty for legacy versions until the backfill runs.
+   * Client renders the waveform from this array — no need to download the
+   * audio file just to visualize it.
+   */
+  peaks         Float[] @default([])
+  /**
+   * Full audio analysis result (issues + metrics + bands) computed at upload
+   * time. Shape mirrors `AnalysisResult` from
+   * `src/lib/audio-analysis-types.ts`. Null for legacy versions or when
+   * decoding failed; the UI then shows "Sin análisis disponible".
+   */
+  analysis      Json?
+
+  track    Track     @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  comments Comment[]
+
+  createdAt DateTime @default(now())
+
+  @@unique([trackId, versionNumber])
+  @@index([trackId])
+}
+
+model Comment {
+  id        String @id @default(cuid())
+  content   String
+  timestamp Float
+  trackId   String
+  versionId String
+  authorId  String
+  /** Null for top-level comments (waveform markers). Set for replies. */
+  parentId  String?
+
+  track   Track        @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  version TrackVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  author  User         @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  parent  Comment?     @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies Comment[]    @relation("CommentReplies")
+  votes   Vote[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([trackId])
+  @@index([versionId])
+  @@index([authorId])
+  @@index([parentId])
+}
+
+/**
+ * In-app notification for the bell dropdown.
+ *
+ *  - `comment` : someone left a top-level comment on a track YOU produced.
+ *  - `reply`   : someone replied to a comment YOU wrote.
+ *  - `vote`    : the track owner marked YOUR comment as useful.
+ *
+ * Always tied to a recipient. The actor is the user who triggered the event
+ * — we filter `actorId == recipientId` defensively in the writers so a user
+ * never notifies themselves, but the model permits it for future event
+ * types that may not have an explicit actor.
+ */
+enum NotificationKind {
+  comment
+  reply
+  vote
+}
+
+model Notification {
+  id          String           @id @default(cuid())
+  recipientId String
+  actorId     String
+  kind        NotificationKind
+  /** Track the event happened on. Always set for the kinds above. */
+  trackId     String?
+  /** Version the comment was attached to (kind = comment / reply). */
+  versionId   String?
+  /** Comment that triggered the event (kind = comment / reply / vote). */
+  commentId   String?
+  /** Null until the recipient marks it read. */
+  readAt      DateTime?
+  createdAt   DateTime         @default(now())
+
+  recipient User @relation("NotificationRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  actor     User @relation("NotificationActor", fields: [actorId], references: [id], onDelete: Cascade)
+
+  // Recipient → bell list, sorted by recency.
+  @@index([recipientId, createdAt])
+  // Recipient → unread count.
+  @@index([recipientId, readAt])
+}
+
+model Vote {
+  id        String @id @default(cuid())
+  commentId String
+  voterId   String
+
+  comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  voter   User    @relation(fields: [voterId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([commentId, voterId])
+  @@index([voterId])
+}
+
+// ────────────────────────────────────────────────────────────
+//  NextAuth (Prisma Adapter standard schema)
+// ────────────────────────────────────────────────────────────
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}

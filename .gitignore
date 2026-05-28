@@ -23,6 +23,7 @@
 # misc
 .DS_Store
 *.pem
+Thumbs.db
 
 # debug
 npm-debug.log*
@@ -30,8 +31,9 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files — `.env.example` is the only one tracked (template, no secrets)
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -39,3 +41,20 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Prisma generated client (pinned to a stable path by `output =` in
+# schema.prisma — see comment there). Regenerated on every `prisma generate`.
+node_modules/.prisma
+
+# Alternative package managers — we use pnpm, ignore stragglers from npm/yarn
+package-lock.json
+yarn.lock
+
+# Editors
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# Misc local dev artifacts
+/src/generated/prisma
