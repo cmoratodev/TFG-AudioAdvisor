@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
@@ -8,6 +9,18 @@ import { NewVersionForm } from './NewVersionForm';
 
 interface PageProps {
   params: Promise<{ id: string }>;
+}
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { id } = await params;
+  const track = await prisma.track.findUnique({
+    where: { id },
+    select: { title: true },
+  });
+  return {
+    title: track ? `Nueva versión — ${track.title}` : 'Nueva versión',
+    description: 'Sube una nueva versión de tu pista. Los comentarios de versiones anteriores se preservan.',
+  };
 }
 
 export default async function NewVersionPage({ params }: PageProps) {

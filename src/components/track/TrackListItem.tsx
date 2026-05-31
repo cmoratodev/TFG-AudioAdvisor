@@ -3,9 +3,11 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Music, Play, Activity, Trash2, MessageCircle, GitBranch, Plus } from 'lucide-react';
+import { Play, Activity, Trash2, MessageCircle, GitBranch, Plus } from 'lucide-react';
 import type { TrackData } from '@/types';
 import { usePlayerStore } from '@/store/usePlayerStore';
+import { TrackCover } from '@/components/track/TrackCover';
+import { toast } from '@/store/useToastStore';
 
 interface Meta {
   duration: string;
@@ -48,24 +50,22 @@ export function TrackListItem({
     setIsDeleting(true);
     const res = await fetch(`/api/tracks/${track.id}`, { method: 'DELETE' });
     if (!res.ok) {
-      alert('No se pudo eliminar la pista.');
+      toast.error('No se pudo eliminar la pista.');
       setIsDeleting(false);
       return;
     }
     if (isCurrent) clear();
+    toast.success('Pista eliminada');
     router.refresh();
   };
 
   return (
     <div className="p-4 hover:bg-zinc-50 transition-colors flex items-center justify-between group">
       <div className="flex items-center gap-4 min-w-0">
-        <div
-          className={`w-12 h-12 rounded flex items-center justify-center shrink-0 ${
-            isCurrent ? 'bg-zinc-950 text-white' : 'bg-zinc-100 text-zinc-400'
-          }`}
-        >
-          <Music size={20} />
-        </div>
+        <TrackCover
+          track={track}
+          className={`w-12 h-12 rounded-lg ${isCurrent ? 'ring-2 ring-zinc-950' : ''}`}
+        />
         <div className="min-w-0">
           <div className="flex items-center gap-2 min-w-0">
             <Link

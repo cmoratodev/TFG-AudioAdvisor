@@ -32,6 +32,82 @@ export async function GET(_req: Request, context: RouteContext) {
   return NextResponse.json({ track })
 }
 
+const ALLOWED_GENRES = new Set([
+  'Electrónica',
+  'Pop',
+  'Hip Hop',
+  'Acústico',
+  'Jazz',
+  'Rock',
+  'Otro',
+])
+
+/**
+ * Edit a track's metadata (title + genre). Owner-only.
+ *
+ * Only these two fields are mutable today — the audio file, peaks, analysis
+ * and cover all have their own dedicated endpoints. Keeping the surface
+ * narrow means we can validate tightly without juggling partial updates.
+ */
+export async function PATCH(req: Request, context: RouteContext) {
+  const user = await getCurrentUser()
+  if (!user?.id) {
+    return NextResponse.json({ error: 'No autenticado.' }, { status: 401 })
+  }
+
+  const { id } = await context.params
+  const track = await prisma.track.findUnique({
+    where: { id },
+    select: { id: true, authorId: true },
+  })
+  if (!track) {
+    return NextResponse.json({ error: 'Pista no encontrada.' }, { status: 404 })
+  }
+  if (track.authorId !== user.id) {
+    return NextResponse.json({ error: 'No tienes permiso.' }, { status: 403 })
+  }
+
+  let body: unknown
+  try {
+    body = await req.json()
+  } catch {
+    return NextResponse.json({ error: 'JSON inválido.' }, { status: 400 })
+  }
+  if (typeof body !== 'object' || body === null) {
+    return NextResponse.json({ error: 'Cuerpo inválido.' }, { status: 400 })
+  }
+  const { title, genre } = body as { title?: unknown; genre?: unknown }
+
+  if (typeof title !== 'string' || title.trim().length === 0) {
+    return NextResponse.json({ error: 'El título no puede estar vacío.' }, { status: 400 })
+  }
+  if (title.trim().length > 120) {
+    return NextResponse.json({ error: 'El título es demasiado largo (máx. 120).' }, { status: 400 })
+  }
+  // Genre is optional; only validate when supplied so the user can clear it.
+  let nextGenre: string | null = null
+  if (genre !== null && genre !== undefined) {
+    if (typeof genre !== 'string') {
+      return NextResponse.json({ error: 'Género inválido.' }, { status: 400 })
+    }
+    const trimmed = genre.trim()
+    if (trimmed.length > 0) {
+      if (!ALLOWED_GENRES.has(trimmed)) {
+        return NextResponse.json({ error: 'Género no reconocido.' }, { status: 400 })
+      }
+      nextGenre = trimmed
+    }
+  }
+
+  const updated = await prisma.track.update({
+    where: { id: track.id },
+    data: { title: title.trim().slice(0, 120), genre: nextGenre },
+    select: { id: true, title: true, genre: true },
+  })
+
+  return NextResponse.json({ track: updated })
+}
+
 export async function DELETE(_req: Request, context: RouteContext) {
   const user = await getCurrentUser()
   if (!user?.id) {

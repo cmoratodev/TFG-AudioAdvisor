@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 
 import { prisma } from '@/lib/prisma'
+import { issueToken } from '@/lib/auth-tokens'
+import { appBaseUrl, sendEmail } from '@/lib/email'
+import { VerifyEmail } from '@/emails/VerifyEmail'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -50,6 +53,28 @@ export async function POST(req: Request) {
     },
     select: { id: true, email: true, name: true },
   })
+
+  // Fire-and-forget the verification email. We deliberately don't await:
+  //  - The new user shouldn't be left staring at the signup form while
+  //    SMTP roundtrips.
+  //  - A Resend hiccup must not block account creation; the user can
+  //    request a resend from the in-app banner.
+  void (async () => {
+    try {
+      const { token } = await issueToken('verify', normalizedEmail)
+      const verifyUrl = `${appBaseUrl()}/api/auth/verify-email?token=${encodeURIComponent(token)}`
+      await sendEmail({
+        to: normalizedEmail,
+        subject: 'Confirma tu cuenta — Audio Advisor',
+        template: VerifyEmail({
+          name: user.name ?? normalizedEmail.split('@')[0],
+          verifyUrl,
+        }),
+      })
+    } catch (err) {
+      console.error('[signup] verification email failed:', err)
+    }
+  })()
 
   return NextResponse.json({ user }, { status: 201 })
 }

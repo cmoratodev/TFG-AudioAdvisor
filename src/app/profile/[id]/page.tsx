@@ -1,13 +1,34 @@
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import Link from 'next/link';
 import { Music, MessageCircle, ThumbsUp } from 'lucide-react';
 
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth-server';
 import { RankBadge, RankProgressBar } from '@/components/ui/RankBadge';
 import { TrackListItem } from '@/components/track/TrackListItem';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { EditableAvatar } from '@/components/profile/EditableAvatar';
+import { DangerZone } from '@/components/profile/DangerZone';
 import { tierFromKey } from '@/lib/ranks';
 import type { TrackData } from '@/types';
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const profile = await prisma.user.findUnique({
+    where: { id },
+    select: { name: true, email: true, level: true },
+  });
+  if (!profile) return { title: 'Perfil no encontrado' };
+  const name = profile.name ?? profile.email?.split('@')[0] ?? 'Usuario';
+  return {
+    title: `${name} — Perfil`,
+    description: `Perfil de ${name} en Audio Advisor. Rango ${profile.level}.`,
+  };
+}
 
 const formatClock = (seconds: number): string => {
   if (!Number.isFinite(seconds) || seconds < 0) return '00:00';
@@ -33,6 +54,7 @@ export default async function ProfilePage({ params }: PageProps) {
       id: true,
       name: true,
       email: true,
+      image: true,
       xp: true,
       level: true,
       createdAt: true,
@@ -44,7 +66,13 @@ export default async function ProfilePage({ params }: PageProps) {
           genre: true,
           audioUrl: true,
           duration: true,
+          coverUrl: true,
           _count: { select: { comments: true, versions: true } },
+          versions: {
+            orderBy: { versionNumber: 'desc' },
+            take: 1,
+            select: { peaks: true },
+          },
         },
       },
       _count: {
@@ -71,19 +99,21 @@ export default async function ProfilePage({ params }: PageProps) {
     author: name,
     audioUrl: t.audioUrl,
     duration: t.duration,
+    genre: t.genre ?? undefined,
+    coverUrl: t.coverUrl ?? undefined,
+    peaks: t.versions[0]?.peaks ?? [],
   }));
 
   return (
     <div className="container py-10 max-w-4xl mx-auto px-4 space-y-10">
       {/* Header */}
       <header className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
-        <div
-          className="w-24 h-24 rounded-full flex items-center justify-center text-3xl font-bold text-white shadow-md shrink-0"
-          style={{ backgroundColor: tier.color }}
-          aria-hidden
-        >
-          {name.charAt(0).toUpperCase()}
-        </div>
+        <EditableAvatar
+          image={profile.image}
+          name={name}
+          fallbackColor={tier.color}
+          isOwner={isSelf}
+        />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3 mb-1 flex-wrap">
             <h1 className="text-3xl font-bold tracking-tight truncate">{name}</h1>
@@ -128,17 +158,18 @@ export default async function ProfilePage({ params }: PageProps) {
           Pistas {profile._count.tracks > 0 && <span className="text-zinc-400 font-mono text-base">({profile._count.tracks})</span>}
         </h2>
         {profile.tracks.length === 0 ? (
-          <div className="bg-white border border-zinc-200 rounded-xl p-10 text-center text-zinc-500 shadow-sm">
-            <Music size={28} className="mx-auto mb-3 opacity-20" />
-            <p>{isSelf ? 'Aún no has subido ninguna pista.' : 'Este usuario aún no ha publicado pistas.'}</p>
-            {isSelf && (
-              <Link
-                href="/dashboard"
-                className="inline-block mt-4 bg-zinc-950 text-white px-5 py-2 rounded-full text-sm font-medium hover:bg-zinc-800 transition-colors"
-              >
-                Subir mi primera pista
-              </Link>
-            )}
+          <div className="bg-white border border-zinc-200 rounded-xl shadow-sm">
+            <EmptyState
+              title={isSelf ? 'Aún no has subido ninguna pista' : 'Sin pistas publicadas'}
+              description={
+                isSelf
+                  ? 'Sube tu primera pista para empezar a recibir feedback técnico.'
+                  : 'Este usuario aún no ha compartido su trabajo.'
+              }
+              action={
+                isSelf ? { label: 'Subir mi primera pista', href: '/dashboard' } : undefined
+              }
+            />
           </div>
         ) : (
           <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-sm divide-y divide-zinc-100">
@@ -151,6 +182,9 @@ export default async function ProfilePage({ params }: PageProps) {
                   author: name,
                   audioUrl: t.audioUrl,
                   duration: t.duration,
+                  genre: t.genre ?? undefined,
+                  coverUrl: t.coverUrl ?? undefined,
+                  peaks: t.versions[0]?.peaks ?? [],
                 }}
                 meta={{
                   duration: formatClock(t.duration),
@@ -166,6 +200,9 @@ export default async function ProfilePage({ params }: PageProps) {
           </div>
         )}
       </section>
+
+      {/* Danger zone — GDPR account deletion. Only the owner sees it. */}
+      {isSelf && <DangerZone />}
     </div>
   );
 }

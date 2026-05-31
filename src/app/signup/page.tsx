@@ -5,6 +5,7 @@ import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Loader2 } from 'lucide-react';
+import { AuthShell } from '@/components/auth/AuthShell';
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -57,12 +58,18 @@ export default function SignUpPage() {
   };
 
   return (
-    <div className="container max-w-md mx-auto py-16 px-4">
-      <div className="mb-8 text-center">
-        <h1 className="text-3xl font-bold tracking-tight mb-2">Crear cuenta</h1>
-        <p className="text-zinc-500 font-medium">Empieza a recibir feedback en tus pistas.</p>
-      </div>
-
+    <AuthShell
+      title="Crear cuenta"
+      subtitle="Empieza a recibir feedback en tus pistas."
+      footer={
+        <>
+          ¿Ya tienes cuenta?{' '}
+          <Link href="/signin" className="font-semibold text-zinc-950 hover:underline">
+            Inicia sesión
+          </Link>
+        </>
+      }
+    >
       <form
         onSubmit={onSubmit}
         className="bg-white border border-zinc-200 rounded-xl p-6 shadow-sm space-y-4"
@@ -125,13 +132,6 @@ export default function SignUpPage() {
           {loading ? 'Creando cuenta...' : 'Crear cuenta'}
         </button>
       </form>
-
-      <p className="text-center text-sm text-zinc-600 mt-6">
-        ¿Ya tienes cuenta?{' '}
-        <Link href="/signin" className="font-semibold text-zinc-950 hover:underline">
-          Inicia sesión
-        </Link>
-      </p>
-    </div>
+    </AuthShell>
   );
 }

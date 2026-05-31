@@ -5,6 +5,7 @@ import { signIn } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Loader2 } from 'lucide-react';
+import { AuthShell } from '@/components/auth/AuthShell';
 
 function SignInForm() {
   const router = useRouter();
@@ -85,30 +86,35 @@ function SignInForm() {
         {loading && <Loader2 size={16} className="animate-spin" />}
         {loading ? 'Entrando...' : 'Entrar'}
       </button>
+
+      <p className="text-center text-xs text-zinc-500 pt-1">
+        <Link href="/forgot-password" className="hover:text-zinc-950 hover:underline transition-colors">
+          ¿Olvidaste tu contraseña?
+        </Link>
+      </p>
     </form>
   );
 }
 
 export default function SignInPage() {
   return (
-    <div className="container max-w-md mx-auto py-16 px-4">
-      <div className="mb-8 text-center">
-        <h1 className="text-3xl font-bold tracking-tight mb-2">Iniciar sesión</h1>
-        <p className="text-zinc-500 font-medium">Vuelve a tus pistas y feedback.</p>
-      </div>
-
+    <AuthShell
+      title="Iniciar sesión"
+      subtitle="Vuelve a tus pistas y a tu feedback."
+      footer={
+        <>
+          ¿No tienes cuenta?{' '}
+          <Link href="/signup" className="font-semibold text-zinc-950 hover:underline">
+            Crea una
+          </Link>
+        </>
+      }
+    >
       <Suspense
         fallback={<div className="h-72 bg-white border border-zinc-200 rounded-xl shadow-sm animate-pulse" />}
       >
         <SignInForm />
       </Suspense>
-
-      <p className="text-center text-sm text-zinc-600 mt-6">
-        ¿No tienes cuenta?{' '}
-        <Link href="/signup" className="font-semibold text-zinc-950 hover:underline">
-          Crea una
-        </Link>
-      </p>
-    </div>
+    </AuthShell>
   );
 }

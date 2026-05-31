@@ -3,6 +3,8 @@
 import { useState, useRef, useCallback, type ChangeEvent, type DragEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { Upload, Loader2 } from 'lucide-react';
+import { uploadWithProgress } from '@/lib/upload-with-progress';
+import { toast } from '@/store/useToastStore';
 
 const ACCEPTED_EXTENSIONS = ['.wav', '.mp3'];
 const ACCEPTED_MIME = ['audio/wav', 'audio/x-wav', 'audio/wave', 'audio/mpeg', 'audio/mp3'];
@@ -56,6 +58,7 @@ export function NewVersionForm({ trackId }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -89,6 +92,7 @@ export function NewVersionForm({ trackId }: Props) {
     if (!file) return;
     setError(null);
     setIsUploading(true);
+    setUploadProgress(0);
 
     const duration = await probeDuration(file);
     if (!duration) {
@@ -101,19 +105,35 @@ export function NewVersionForm({ trackId }: Props) {
     form.append('file', file);
     form.append('duration', String(duration));
 
-    const res = await fetch(`/api/tracks/${trackId}/versions`, {
-      method: 'POST',
-      body: form,
-    });
+    try {
+      const res = await uploadWithProgress(
+        `/api/tracks/${trackId}/versions`,
+        form,
+        (loaded, total) => {
+          setUploadProgress(total > 0 ? loaded / total : 0);
+        },
+      );
 
-    if (!res.ok) {
-      const data = (await res.json().catch(() => null)) as { error?: string } | null;
-      setError(data?.error ?? 'No se pudo subir la versión.');
+      if (!res.ok) {
+        let message = 'No se pudo subir la versión.';
+        try {
+          const data = JSON.parse(res.bodyText) as { error?: string };
+          if (data.error) message = data.error;
+        } catch {
+          // Body wasn't JSON — keep the default message.
+        }
+        setError(message);
+        setIsUploading(false);
+        return;
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error de red durante la subida.');
       setIsUploading(false);
       return;
     }
 
     setIsUploading(false);
+    toast.success('Nueva versión publicada', 'Los comentarios anteriores siguen accesibles.');
     router.push(`/track/${trackId}`);
     router.refresh();
   };
@@ -191,15 +211,38 @@ export function NewVersionForm({ trackId }: Props) {
       </div>
 
       {file && (
-        <button
-          type="button"
-          onClick={submit}
-          disabled={isUploading}
-          className="mt-6 w-full h-11 rounded-lg bg-zinc-950 text-white font-medium hover:bg-zinc-800 disabled:opacity-60 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-        >
-          {isUploading && <Loader2 size={16} className="animate-spin" />}
-          {isUploading ? 'Subiendo nueva versión...' : 'Publicar nueva versión'}
-        </button>
+        <>
+          <button
+            type="button"
+            onClick={submit}
+            disabled={isUploading}
+            className="mt-6 w-full h-11 rounded-lg bg-zinc-950 text-white font-medium hover:bg-zinc-800 disabled:opacity-60 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+          >
+            {isUploading && <Loader2 size={16} className="animate-spin" />}
+            {isUploading ? 'Subiendo…' : 'Publicar nueva versión'}
+          </button>
+
+          {isUploading && (
+            <div className="mt-3 space-y-1.5" aria-live="polite">
+              <div className="h-1.5 w-full rounded-full bg-zinc-100 overflow-hidden">
+                <div
+                  className="h-full bg-zinc-950 transition-[width] duration-150 ease-out"
+                  style={{ width: `${Math.round(uploadProgress * 100)}%` }}
+                  role="progressbar"
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={Math.round(uploadProgress * 100)}
+                  aria-label="Progreso de subida"
+                />
+              </div>
+              <p className="text-xs text-zinc-500 font-mono tabular-nums text-right">
+                {uploadProgress >= 1
+                  ? 'Procesando audio en el servidor…'
+                  : `${Math.round(uploadProgress * 100)}%`}
+              </p>
+            </div>
+          )}
+        </>
       )}
 
       {error && (

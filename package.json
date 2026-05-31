@@ -6,13 +6,17 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
+    "3dsvg": "^0.2.1",
     "@base-ui/react": "^1.4.0",
     "@next-auth/prisma-adapter": "^1.0.7",
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.7.0",
+    "@react-email/components": "^1.0.12",
+    "@react-email/render": "^2.0.8",
     "@supabase/supabase-js": "^2.106.2",
     "audio-decode": "^3.10.1",
     "bcryptjs": "^3.0.3",
@@ -25,6 +29,7 @@
     "pg": "^8.21.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "resend": "^6.12.4",
     "server-only": "^0.0.1",
     "shadcn": "^4.2.0",
     "tailwind-merge": "^3.5.0",

@@ -7,6 +7,8 @@ declare module 'next-auth' {
       id: string
       xp: number
       level: UserLevel
+      /** Whether the user has confirmed the email shipped with their account. */
+      emailVerified: boolean
     } & DefaultSession['user']
   }
 }
@@ -16,5 +18,6 @@ declare module 'next-auth/jwt' {
     id?: string
     xp?: number
     level?: UserLevel
+    emailVerified?: boolean
   }
 }

@@ -63,6 +63,12 @@ model Track {
   audioUrl String
   /** Denormalized cache pointing to the LATEST TrackVersion.duration. */
   duration Float
+  /**
+   * Optional cover image uploaded by the author at track creation. When
+   * null, the UI falls back to the default per-genre image under
+   * `/public/genres/<slug>.jpg`.
+   */
+  coverUrl String?
   authorId String
   author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
   comments Comment[]

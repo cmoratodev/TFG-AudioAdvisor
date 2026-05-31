@@ -1,5 +1,7 @@
 'use client'
 
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   ShieldCheck,
   AlertOctagon,
@@ -9,6 +11,8 @@ import {
   Globe,
   AudioLines,
   Layers,
+  RefreshCw,
+  Loader2,
 } from 'lucide-react'
 import type {
   AnalysisIssue,
@@ -16,6 +20,7 @@ import type {
   AnalysisResult,
   BandEnergies,
 } from '@/lib/audio-analysis-types'
+import { toast } from '@/store/useToastStore'
 
 const formatClock = (seconds: number): string => {
   if (!Number.isFinite(seconds) || seconds < 0) return '00:00'
@@ -43,6 +48,13 @@ interface Props {
   onCommentIssue: (issue: AnalysisIssue) => void
   /** Optional: highlighted/active issue id (e.g. the one currently being drafted). */
   activeIssueId?: string | null
+  /**
+   * Track id and ownership flag to enable the "Re-analizar" admin action.
+   * Hidden for non-owners. Triggers `/api/tracks/[id]/reanalyze` which
+   * re-runs the FFT + detectors on every version's stored audio.
+   */
+  trackId?: string
+  isOwner?: boolean
 }
 
 const severityClass: Record<AnalysisIssue['severity'], { dot: string; chip: string }> = {
@@ -87,8 +99,43 @@ function clusterIssues(issues: AnalysisIssue[]): AnalysisIssue[][] {
   return clusters
 }
 
-export function AudioAnalysisPanel({ result, onCommentIssue, activeIssueId }: Props) {
+export function AudioAnalysisPanel({
+  result,
+  onCommentIssue,
+  activeIssueId,
+  trackId,
+  isOwner,
+}: Props) {
+  const router = useRouter()
   const issueCount = result?.issues.length ?? 0
+  const [reanalyzing, setReanalyzing] = useState(false)
+
+  const onReanalyze = async () => {
+    if (!trackId || reanalyzing) return
+    if (
+      !confirm(
+        'Esto reprocesa el audio de todas las versiones y reemplaza el análisis actual. ¿Continuar?',
+      )
+    )
+      return
+    setReanalyzing(true)
+    try {
+      const res = await fetch(`/api/tracks/${trackId}/reanalyze`, { method: 'POST' })
+      if (!res.ok) {
+        const data = (await res.json().catch(() => null)) as { error?: string } | null
+        toast.error('No se pudo re-analizar', data?.error)
+        return
+      }
+      const { ok, failed } = (await res.json()) as { ok: number; failed: number }
+      toast.success(
+        'Análisis actualizado',
+        failed > 0 ? `${ok} versión(es) re-analizada(s), ${failed} con error` : undefined,
+      )
+      router.refresh()
+    } finally {
+      setReanalyzing(false)
+    }
+  }
 
   return (
     <section className="bg-white border border-zinc-200 rounded-xl shadow-sm overflow-hidden">
@@ -104,6 +151,23 @@ export function AudioAnalysisPanel({ result, onCommentIssue, activeIssueId }: Pr
             </span>
           )}
         </div>
+        {isOwner && trackId && (
+          <button
+            type="button"
+            onClick={() => void onReanalyze()}
+            disabled={reanalyzing}
+            aria-label="Re-analizar pista"
+            title="Vuelve a procesar el audio con los detectores actuales"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-zinc-600 hover:text-zinc-950 border border-zinc-200 hover:border-zinc-950 rounded-full px-3 py-1 transition-colors disabled:opacity-60 disabled:cursor-wait"
+          >
+            {reanalyzing ? (
+              <Loader2 size={12} className="animate-spin" />
+            ) : (
+              <RefreshCw size={12} />
+            )}
+            {reanalyzing ? 'Re-analizando…' : 'Re-analizar'}
+          </button>
+        )}
       </header>
 
       <div className="px-5 py-4">

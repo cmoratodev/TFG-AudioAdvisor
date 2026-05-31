@@ -28,6 +28,13 @@ export interface TrackData {
   authorLevel?: UserLevel
   /** Author user id (used to link to /profile/[id]). */
   authorId?: string
+  /**
+   * Pre-computed waveform peaks (~1800 floats, server-rendered). When
+   * present, the global AudioPlayer renders a SoundCloud-style mini wave
+   * inside the seek bar instead of a flat track. Empty arrays count as
+   * "no peaks" — the player falls back to a regular slider.
+   */
+  peaks?: number[]
 }
 
 export interface CommentEntry {

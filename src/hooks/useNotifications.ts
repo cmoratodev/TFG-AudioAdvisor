@@ -80,10 +80,16 @@ export function useNotifications(viewerId: string | null | undefined): UseNotifi
   }, [refresh])
 
   // Realtime: subscribe to inserts addressed to this viewer.
+  // The channel name carries a `Date.now()` suffix so a fast unmount→remount
+  // cycle (React 19 Strict Mode in dev, or two consumers mounting at once)
+  // can't collide on the same internal Supabase channel — which would
+  // surface as "cannot add postgres_changes callbacks after subscribe()".
+  // Each effect run owns its own channel; cleanup detaches it deterministically.
   useEffect(() => {
     if (!viewerId) return
+    const channelName = `notifications-${viewerId}-${Date.now()}`
     const channel = supabaseBrowser
-      .channel(`notifications-${viewerId}`)
+      .channel(channelName)
       .on(
         'postgres_changes',
         {

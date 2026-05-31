@@ -53,11 +53,12 @@ export const authOptions: AuthOptions = {
         try {
           const fresh = await prisma.user.findUnique({
             where: { id: token.id as string },
-            select: { xp: true, level: true },
+            select: { xp: true, level: true, emailVerified: true },
           })
           if (fresh) {
             token.xp = fresh.xp
             token.level = fresh.level
+            token.emailVerified = fresh.emailVerified !== null
           }
         } catch (err) {
           console.error('[auth] Failed to refresh xp/level in JWT:', err)
@@ -71,6 +72,7 @@ export const authOptions: AuthOptions = {
         if (token.id) session.user.id = token.id as string
         if (typeof token.xp === 'number') session.user.xp = token.xp
         if (token.level) session.user.level = token.level
+        session.user.emailVerified = token.emailVerified === true
       }
       return session
     },

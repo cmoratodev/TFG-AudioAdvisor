@@ -13,6 +13,9 @@ import { Card } from '@/components/ui/card';
 import { RankBadge } from '@/components/ui/RankBadge';
 import { AudioAnalysisPanel } from '@/components/audio/AudioAnalysisPanel';
 import { useTrackRealtimeComments } from '@/hooks/useTrackRealtimeComments';
+import { EditableTrackCover } from '@/components/track/EditableTrackCover';
+import { EditTrackButton } from '@/components/track/EditTrackButton';
+import { toast } from '@/store/useToastStore';
 import type { AnalysisIssue, AnalysisResult } from '@/lib/audio-analysis-types';
 import type { CommentEntry, TrackData, TrackVersionSummary } from '@/types';
 
@@ -100,6 +103,10 @@ export function TrackDetails({
   // IDs of comments inserted by OTHER users via realtime. They flash briefly
   // so the user notices the live update.
   const [recentlyAddedIds, setRecentlyAddedIds] = useState<Set<string>>(new Set());
+  // Visual pagination for the comments list. Wave markers always render
+  // every comment (the dots are cheap and the markers are the whole point
+  // of the waveform), but the textual list below stays manageable.
+  const [visibleCommentCount, setVisibleCommentCount] = useState<number>(20);
 
   // Issues from server analysis split into local (drawn as wave bands) vs
   // global (rendered as cards in the panel only). The panel uses both.
@@ -240,8 +247,10 @@ export function TrackDetails({
     const ws = WaveSurfer.create({
       container: waveformRef.current,
       waveColor: '#e4e4e7',
-      progressColor: '#09090b',
-      cursorColor: '#09090b',
+      // Progress + cursor in the brand accent — this is the single most
+      // visible "your audio" indicator across the product.
+      progressColor: '#7c3aed',
+      cursorColor: '#7c3aed',
       barWidth: 3,
       barRadius: 3,
       height: 120,
@@ -432,9 +441,10 @@ export function TrackDetails({
     if (!confirm('¿Eliminar este comentario?')) return;
     const res = await fetch(`/api/comments/${id}`, { method: 'DELETE' });
     if (!res.ok) {
-      alert('No se pudo eliminar el comentario.');
+      toast.error('No se pudo eliminar el comentario.');
       return;
     }
+    toast.success('Comentario eliminado');
     // Remove top-level OR nested reply.
     setComments((prev) =>
       prev
@@ -471,6 +481,7 @@ export function TrackDetails({
         replies: c.replies?.map(apply),
       })),
     );
+    toast.success('Marcado útil', '+25 XP para el autor del comentario');
   };
 
   const togglePlayback = () => {
@@ -522,7 +533,7 @@ export function TrackDetails({
               </button>
             ) : c.votedByViewer || c.votes > 0 ? (
               <span
-                className="flex items-center gap-1 text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-1 rounded-full"
+                className="flex items-center gap-1 text-xs font-semibold text-violet-700 bg-violet-50 border border-violet-200 px-2 py-1 rounded-full"
                 title={c.votedByViewer ? 'Marcado como útil por el autor' : 'Útil'}
               >
                 <ThumbsUp size={12} className="fill-current" />
@@ -616,17 +627,31 @@ export function TrackDetails({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4 mb-2">
+      <div className="flex items-center gap-3 sm:gap-4 mb-2">
         <Link
           href="/my-tracks"
           aria-label="Volver a mis canciones"
-          className="w-10 h-10 rounded-full flex items-center justify-center border border-zinc-200 text-zinc-600 hover:bg-zinc-950 hover:text-white transition-all shadow-sm"
+          className="w-9 h-9 sm:w-10 sm:h-10 shrink-0 rounded-full flex items-center justify-center border border-zinc-200 text-zinc-600 hover:bg-zinc-950 hover:text-white transition-all shadow-sm"
           title="Volver"
         >
           <ArrowLeft size={18} />
         </Link>
+        <EditableTrackCover
+          track={track}
+          isOwner={isTrackOwner}
+          className="w-16 h-16 sm:w-24 sm:h-24 rounded-xl"
+        />
         <div className="min-w-0">
-          <h1 className="text-3xl font-bold tracking-tight mb-1 truncate">{track.title}</h1>
+          <div className="flex items-center gap-2 mb-1">
+            <h1 className="text-xl sm:text-3xl font-bold tracking-tight truncate">{track.title}</h1>
+            {isTrackOwner && (
+              <EditTrackButton
+                trackId={track.id}
+                initialTitle={track.title}
+                initialGenre={track.genre ?? null}
+              />
+            )}
+          </div>
           <p className="text-zinc-500 font-medium flex items-center gap-2 flex-wrap">
             <span>
               Producido por{' '}
@@ -796,6 +821,8 @@ export function TrackDetails({
         result={analysisResult}
         onCommentIssue={startCommentFromIssue}
         activeIssueId={activeAnalysisIssueId}
+        trackId={track.id}
+        isOwner={isTrackOwner}
       />
 
       <div className="grid md:grid-cols-2 gap-8">
@@ -865,7 +892,20 @@ export function TrackDetails({
               <p className="text-sm text-zinc-500 italic">Aún no hay comentarios. Sé el primero.</p>
             )}
 
-            {comments.map((c) => renderComment(c, false))}
+            {comments.slice(0, visibleCommentCount).map((c) => renderComment(c, false))}
+
+            {comments.length > visibleCommentCount && (
+              <button
+                type="button"
+                onClick={() => setVisibleCommentCount((n) => n + 20)}
+                className="w-full mt-2 py-2.5 text-sm font-semibold text-zinc-600 hover:text-zinc-950 border border-zinc-200 hover:border-zinc-950 rounded-lg transition-colors"
+              >
+                Mostrar 20 más
+                <span className="text-xs text-zinc-400 ml-2 font-mono">
+                  ({comments.length - visibleCommentCount} restantes)
+                </span>
+              </button>
+            )}
 
             {isAuthenticated && (
               <div className="mt-8 pt-6 border-t border-zinc-200">

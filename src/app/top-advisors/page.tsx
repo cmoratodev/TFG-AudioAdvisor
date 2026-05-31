@@ -1,10 +1,17 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Trophy, Medal, Award } from 'lucide-react';
 
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth-server';
 import { RankBadge } from '@/components/ui/RankBadge';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { tierFromKey } from '@/lib/ranks';
+
+export const metadata: Metadata = {
+  title: 'Top Advisors',
+  description: 'Ranking global de productores y asesores que aportan feedback útil. De Hierro a Leyenda según tu actividad.',
+};
 
 const TOP_LIMIT = 50;
 
@@ -60,9 +67,12 @@ export default async function TopAdvisorsPage() {
       </header>
 
       {top.length === 0 && (
-        <div className="bg-white border border-zinc-200 rounded-xl p-12 text-center text-zinc-500 shadow-sm">
-          <Trophy size={36} className="mx-auto mb-4 opacity-20" />
-          <p>Aún no hay clasificación. Sube pistas y deja feedback para empezar a sumar XP.</p>
+        <div className="bg-white border border-zinc-200 rounded-xl shadow-sm">
+          <EmptyState
+            title="Clasificación vacía"
+            description="Aún no hay usuarios con actividad suficiente. Sube pistas y deja feedback para empezar a sumar XP y aparecer aquí."
+            action={{ label: 'Explorar pistas', href: '/explore', variant: 'secondary' }}
+          />
         </div>
       )}
 

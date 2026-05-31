@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
 import { prisma } from '@/lib/prisma';
@@ -9,6 +10,20 @@ import type { AnalysisResult } from '@/lib/audio-analysis-types';
 interface PageProps {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ v?: string }>;
+}
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { id } = await params;
+  const track = await prisma.track.findUnique({
+    where: { id },
+    select: { title: true, author: { select: { name: true, email: true } } },
+  });
+  if (!track) return { title: 'Pista no encontrada' };
+  const author = track.author.name ?? track.author.email?.split('@')[0] ?? 'Usuario';
+  return {
+    title: `${track.title} — ${author}`,
+    description: `Escucha "${track.title}" de ${author} y deja feedback técnico anclado al segundo.`,
+  };
 }
 
 const authorLabel = (
@@ -69,7 +84,9 @@ export default async function TrackPage({ params, searchParams }: PageProps) {
     audioUrl: selectedVersion.audioUrl,
     duration: selectedVersion.duration,
     genre: track.genre ?? undefined,
+    coverUrl: track.coverUrl ?? undefined,
     authorLevel: track.author.level,
+    peaks: selectedVersion.peaks,
   };
 
   const versions: TrackVersionSummary[] = track.versions.map((v) => ({
