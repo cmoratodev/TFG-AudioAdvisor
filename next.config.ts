@@ -12,18 +12,9 @@ const nextConfig: NextConfig = {
   //    bundler doesn't trace, breaking the deployed function with
   //    "Cannot find module '@prisma/client-runtime-utils'" on Vercel.
   //    Treating Prisma as external lets Node's normal require chain find
-  //    everything at runtime.
+  //    everything at runtime, and Vercel's serverless tracer follows
+  //    package.json dependencies of externals automatically.
   serverExternalPackages: ['audio-decode', '@prisma/client', '.prisma/client'],
-  // Belt and braces for Vercel: explicitly include the Prisma runtime files
-  // in the function bundle. Without this Vercel only ships what Next's
-  // tracer pulled in, and Prisma-as-external means the tracer skipped them.
-  outputFileTracingIncludes: {
-    '/**/*': [
-      './node_modules/.prisma/client/**/*',
-      './node_modules/@prisma/client/**/*',
-      './node_modules/@prisma/client-runtime-utils/**/*',
-    ],
-  },
   // Whitelist the Supabase Storage public origin so <Image> can optimise
   // user-uploaded covers and avatars (resize, format negotiation, lazy
   // loading) instead of shipping the original-size file every time.
