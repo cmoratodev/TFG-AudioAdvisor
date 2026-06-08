@@ -7,31 +7,20 @@ import { Camera, Loader2, X, Trash2 } from 'lucide-react'
 import { toast } from '@/store/useToastStore'
 
 interface Props {
-  /** Pre-existing avatar URL (null = use the colored initial fallback). */
+  /** URL del avatar existente (null = inicial coloreada por defecto). */
   image: string | null
-  /** Display name; first character is used in the initial-circle fallback. */
+  /** Nombre visible. La primera letra se usa en el fallback. */
   name: string
-  /** Background of the initial-circle fallback (typically the rank color). */
+  /** Color del círculo de fallback (típicamente el del rango). */
   fallbackColor: string
-  /** Only the profile owner sees the edit overlay + actions. */
+  /** Sólo el dueño del perfil ve los controles de edición. */
   isOwner: boolean
 }
 
 const ACCEPTED_AVATAR_MIME = ['image/jpeg', 'image/png', 'image/webp']
 const MAX_AVATAR_MB = 3
 
-/**
- * Read-only avatar for visitors, editable for the owner.
- *
- *   - When `image` is null we render a colored initial (same look the rest
- *     of the app uses to talk about users in cards / lists).
- *   - For the owner, hovering reveals a camera-icon overlay; the file picker
- *     submits to `/api/profile/avatar` and on success patches the next-auth
- *     session locally so the navbar / track items refresh without a hard
- *     reload.
- *   - A small "remove" affordance under the avatar lets the owner revert to
- *     the initial-circle fallback (DELETE on the same endpoint).
- */
+/** Avatar editable: hover muestra overlay para subir, debajo botón de quitar. */
 export function EditableAvatar({ image, name, fallbackColor, isOwner }: Props) {
   const router = useRouter()
   const { update: updateSession } = useSession()

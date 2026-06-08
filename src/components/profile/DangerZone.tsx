@@ -7,17 +7,8 @@ import { Trash2, AlertTriangle, Loader2, X } from 'lucide-react'
 import { toast } from '@/store/useToastStore'
 
 /**
- * Account-deletion controls rendered at the bottom of the owner's own
- * profile. Two-step UX:
- *
- *   1. A red panel sits at the bottom of the page (always visible to the
- *      owner, but understated — easy to ignore).
- *   2. Clicking "Borrar mi cuenta" pops a confirmation modal that asks for
- *      the password to make sure the destructive action was intentional.
- *
- * On success the user is signed out (NextAuth) and bounced to the home
- * page — by then the account row no longer exists in the DB anyway, so the
- * session JWT becomes inert on its next refresh too.
+ * Bloque "Zona de peligro" del perfil propio. Pulsar el botón abre un
+ * modal que pide confirmación con la contraseña antes de borrar la cuenta.
  */
 export function DangerZone() {
   const router = useRouter()

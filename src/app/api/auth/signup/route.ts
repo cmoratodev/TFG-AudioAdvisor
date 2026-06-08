@@ -54,11 +54,7 @@ export async function POST(req: Request) {
     select: { id: true, email: true, name: true },
   })
 
-  // Fire-and-forget the verification email. We deliberately don't await:
-  //  - The new user shouldn't be left staring at the signup form while
-  //    SMTP roundtrips.
-  //  - A Resend hiccup must not block account creation; the user can
-  //    request a resend from the in-app banner.
+  // Envío del correo de verificación sin bloquear la respuesta al cliente.
   void (async () => {
     try {
       const { token } = await issueToken('verify', normalizedEmail)

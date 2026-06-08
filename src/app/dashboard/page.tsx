@@ -71,11 +71,7 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
-  // Object-URL bookkeeping for the cover preview thumbnail. Revoke the
-  // previous URL when the file changes so we don't leak blob handles.
-  // The `set-state-in-effect` rule flags any setState inside an effect, but
-  // here the state literally mirrors an external resource (a Blob URL) that
-  // needs a cleanup callback — exactly what useEffect is for.
+  // Gestión del Object URL para la previsualización de la portada.
   useEffect(() => {
     if (!coverFile) {
       // eslint-disable-next-line react-hooks/set-state-in-effect

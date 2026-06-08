@@ -8,33 +8,22 @@ import { usePlayerStore } from '@/store/usePlayerStore'
 import { toast } from '@/store/useToastStore'
 
 interface Props {
-  /** The track header in TrackDetails passes its `TrackData` here. */
   track: {
     id: string
     title: string
     coverUrl?: string | null
     genre?: string | null
   }
-  /** Only the owner sees the edit overlay + actions. */
+  /** Sólo el dueño de la pista ve el overlay de edición. */
   isOwner: boolean
-  /**
-   * Tailwind classes for the wrapper — controls size + rounding. Both the
-   * cover image and the hover overlay are absolutely positioned children
-   * clipped by this wrapper's shape (via `overflow-hidden`).
-   */
+  /** Clases Tailwind del contenedor (tamaño y bordes). */
   className?: string
 }
 
 const ACCEPTED_COVER_MIME = ['image/jpeg', 'image/png', 'image/webp']
 const MAX_COVER_MB = 5
 
-/**
- * Read-only cover for everyone, editable thumbnail for the track owner.
- * Hovering reveals a camera-icon overlay; clicking opens a file picker.
- * After upload, the local Player store is patched in place (so the bottom
- * bar reflects the new artwork immediately) and `router.refresh()` repulls
- * the server-rendered page so other surfaces catch up on next navigation.
- */
+/** Portada editable: hover muestra overlay para subir nueva imagen. */
 export function EditableTrackCover({
   track,
   isOwner,
@@ -78,8 +67,7 @@ export function EditableTrackCover({
         return
       }
       const { coverUrl } = (await res.json()) as { coverUrl: string | null }
-      // Patch the player store in place so the bottom bar updates without a
-      // round-trip — only if this is the track currently playing.
+      // Actualiza el player en memoria si la pista editada está sonando.
       if (currentTrack?.id === track.id) {
         replaceCurrentTrack({ ...currentTrack, coverUrl: coverUrl ?? undefined })
       }

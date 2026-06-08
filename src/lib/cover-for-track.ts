@@ -1,17 +1,6 @@
 /**
- * Resolves the cover image a track should show.
- *
- * Order of preference:
- *   1. The author's uploaded `coverUrl` if present.
- *   2. The default per-genre artwork in `/public/genres/<slug>.jpg`.
- *   3. A neutral fallback ("otro") if the genre is unknown or null.
- *
- * Genre slugging mirrors the upload form's `GENRES` array:
- *   "Hip Hop"     → "hip-hop"
- *   "Acústico"    → "acustico"  (accents stripped)
- *   "Electrónica" → "electronica"
- *   "Pop" / "Jazz" / "Rock" → lowercase
- *   anything else / null   → "otro"
+ * Devuelve la URL de la portada que debe mostrarse para una pista.
+ * Prioridad: cover propio > imagen por género > fallback "otro".
  */
 
 const KNOWN_GENRES = new Set([
@@ -29,7 +18,6 @@ function slugifyGenre(genre: string | null | undefined): string {
   const slug = genre
     .toLowerCase()
     .normalize('NFD')
-    // Strip combining diacritical marks (U+0300 to U+036F).
     .replace(/[̀-ͯ]/g, '')
     .trim()
     .replace(/\s+/g, '-')
@@ -41,7 +29,5 @@ export function coverForTrack(track: {
   genre?: string | null
 }): string {
   if (track.coverUrl) return track.coverUrl
-  // Default genre covers are pre-processed into .webp by
-  // `scripts/process-genre-covers.mts` (~95 % smaller than the source PNG).
   return `/genres/${slugifyGenre(track.genre)}.webp`
 }

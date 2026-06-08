@@ -7,20 +7,9 @@ import { getCurrentUser } from '@/lib/auth-server'
 export const runtime = 'nodejs'
 
 /**
- * Permanently delete the signed-in user's account.
- *
- * Right-to-be-forgotten endpoint (Art. 17 GDPR). Wipes everything tied to
- * the user:
- *   - DB: Prisma cascades through Track / Comment / Vote / Notification /
- *     Session / Account / TrackVersion via `onDelete: Cascade` in the
- *     schema, so a single `user.delete` covers the database side.
- *   - Storage: best-effort removal of every audio / cover / avatar file
- *     under the user's folder in the bucket. Failures are logged but the
- *     account deletion still proceeds — we'd rather leave orphan blobs
- *     than block a user from exercising their right.
- *
- * Requires password confirmation in the body. Trades a little UX friction
- * for protection against accidental clicks and CSRF-ish replays.
+ * Borrado de cuenta (RGPD art. 17). Requiere contraseña en el cuerpo.
+ * Prisma elimina en cascada todos los registros del usuario; los archivos
+ * en Storage se intentan borrar tras el list.
  */
 export async function DELETE(req: Request) {
   const user = await getCurrentUser()
@@ -55,9 +44,7 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ error: 'Contraseña incorrecta.' }, { status: 401 })
   }
 
-  // Storage cleanup BEFORE the DB delete so a failed list call surfaces
-  // before we wipe the row. Supabase's `list()` is shallow — we paginate
-  // through all subfolders (root, covers, avatar) to gather paths.
+  // Listado de archivos del usuario antes del DELETE en BD.
   const folders = [user.id, `${user.id}/covers`, `${user.id}/avatar`]
   const filesToDelete: string[] = []
   for (const folder of folders) {
@@ -70,7 +57,6 @@ export async function DELETE(req: Request) {
     }
     if (data) {
       for (const item of data) {
-        // `list` returns folder entries as well — skip those (no metadata).
         if (item.id) filesToDelete.push(`${folder}/${item.name}`)
       }
     }

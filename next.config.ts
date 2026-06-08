@@ -1,23 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Packages we explicitly DO NOT want bundled by Turbopack — they either
-  // pull in dynamic requires the bundler can't resolve, or split
-  // themselves across sub-packages that the trace misses.
-  //
-  //  - `audio-decode`: WASM decoders + `@eshaz/web-worker` with a dynamic
-  //    `import(<runtime-string>)` Turbopack can't statically resolve.
-  //  - `@prisma/client` + `.prisma/client`: Prisma 7 split runtime helpers
-  //    into a separate `@prisma/client-runtime-utils` package which the
-  //    bundler doesn't trace, breaking the deployed function with
-  //    "Cannot find module '@prisma/client-runtime-utils'" on Vercel.
-  //    Treating Prisma as external lets Node's normal require chain find
-  //    everything at runtime, and Vercel's serverless tracer follows
-  //    package.json dependencies of externals automatically.
+  // Paquetes que no deben empaquetarse y resolverse en runtime mediante
+  // el require nativo de Node (decodificación WASM y cliente de Prisma).
   serverExternalPackages: ['audio-decode', '@prisma/client', '.prisma/client'],
-  // Whitelist the Supabase Storage public origin so <Image> can optimise
-  // user-uploaded covers and avatars (resize, format negotiation, lazy
-  // loading) instead of shipping the original-size file every time.
+  // Permitir que <Image> optimice los assets servidos desde Supabase Storage.
   images: {
     remotePatterns: [
       {

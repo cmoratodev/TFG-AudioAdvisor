@@ -1,16 +1,11 @@
 generator client {
   provider = "prisma-client-js"
-  // Pin the generated client to a stable, top-level location instead of
-  // letting Prisma drop it into a pnpm-hoisted `.pnpm/@prisma+client@.../`
-  // path. This makes `@prisma/client/default.js` (which does
-  // `require('.prisma/client/default')`) find the generated module from
-  // both the Next.js bundle AND from one-off Node scripts (tsx, esbuild,
-  // etc.) without per-script tricks.
+  // Ruta fija para el cliente generado, compatible con pnpm y tsx.
   output   = "../node_modules/.prisma/client"
 }
 
-// Prisma 7: connection URL is configured in prisma.config.ts (CLI) and
-// via the driver adapter in src/lib/prisma.ts (runtime).
+// La URL de conexión se configura en prisma.config.ts (CLI) y en
+// src/lib/prisma.ts (runtime) mediante el driver adapter.
 datasource db {
   provider = "postgresql"
 }

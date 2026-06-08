@@ -6,7 +6,7 @@ import { processAudioBuffer, serializeAnalysisForDb } from '@/lib/audio-processi
 import type { Prisma } from '@prisma/client'
 
 export const runtime = 'nodejs'
-// Same heavy audio pipeline as POST /api/tracks — see that file's note.
+// Mismo pipeline pesado que POST /api/tracks.
 export const maxDuration = 60
 
 const MAX_BYTES = 50 * 1024 * 1024

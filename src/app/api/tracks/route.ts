@@ -7,8 +7,7 @@ import { processAudioBuffer, serializeAnalysisForDb } from '@/lib/audio-processi
 import type { Prisma } from '@prisma/client'
 
 export const runtime = 'nodejs'
-// Audio decode + FFT analysis can take 5-15 s on long WAVs. Vercel Hobby
-// defaults to 10 s; bump to 60 s so uploads never get cut off mid-analysis.
+// El análisis FFT puede prolongarse en WAVs largos; ampliamos a 60 s.
 export const maxDuration = 60
 
 const MAX_BYTES = 50 * 1024 * 1024 // 50 MB (audio)
@@ -20,8 +19,6 @@ const ALLOWED_MIME = new Set([
   'audio/wave',
 ])
 
-// Cover images are optional. The defaults under `/public/genres/<slug>.jpg`
-// are used when none is uploaded — see `coverForTrack`.
 const MAX_COVER_BYTES = 5 * 1024 * 1024 // 5 MB
 const ALLOWED_COVER_MIME = new Set(['image/jpeg', 'image/png', 'image/webp'])
 
@@ -91,8 +88,7 @@ export async function POST(req: Request) {
     )
   }
 
-  // Cover image is optional — `null` cover triggers the per-genre default in
-  // the UI (`coverForTrack`). When provided, validate type + size.
+  // La portada es opcional; si no se aporta se aplica la del género.
   if (cover !== null && !(cover instanceof File)) {
     return NextResponse.json({ error: 'Portada inválida.' }, { status: 400 })
   }
@@ -124,10 +120,8 @@ export async function POST(req: Request) {
 
   const buffer = Buffer.from(await file.arrayBuffer())
 
-  // Decode + peaks + analysis all in one pass — decoding is the expensive
-  // step. Failures are non-fatal: missing peaks → flat placeholder waveform;
-  // missing analysis → panel shows "Sin análisis disponible". We do this
-  // BEFORE the Storage upload so a decode failure doesn't leave an orphan.
+  // Decodificación + picos + análisis en una sola pasada (antes del upload
+  // a Storage para no dejar archivos huérfanos si la decodificación falla).
   const { peaks, analysis } = await processAudioBuffer(buffer)
   const analysisJson = analysis
     ? (serializeAnalysisForDb(analysis) as Prisma.InputJsonValue)
@@ -148,11 +142,7 @@ export async function POST(req: Request) {
     )
   }
 
-  // Cover upload (optional). If the user explicitly provided one and the
-  // upload fails, we surface the error instead of silently dropping it —
-  // a silent fallback to "no cover" left users staring at a default
-  // artwork without knowing why their image didn't take. To keep going
-  // anyway, we also clean up the just-uploaded audio so we don't leak it.
+  // Upload de la portada. Si falla, se revierte también el audio.
   let coverPath: string | null = null
   let coverUrl: string | null = null
   if (coverFile) {
@@ -172,8 +162,7 @@ export async function POST(req: Request) {
         coverUploadError.message,
         coverUploadError,
       )
-      // Roll back the audio upload too — otherwise we'd publish a track
-      // tied to the audio file the user thought failed.
+      // Revertir el upload de audio para evitar archivos huérfanos.
       await supabaseAdmin.storage.from(TRACKS_BUCKET).remove([storagePath]).catch(() => {})
       return NextResponse.json(
         {
@@ -228,8 +217,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ track, xpAward }, { status: 201 })
   } catch (e) {
-    // Roll back BOTH uploads if the DB insert fails — otherwise we'd leak
-    // orphan files in Storage.
+    // Revertir ambos uploads si falla la inserción en BD.
     const toRemove = coverPath ? [storagePath, coverPath] : [storagePath]
     await supabaseAdmin.storage.from(TRACKS_BUCKET).remove(toRemove)
     console.error('Track DB insert failed:', e)

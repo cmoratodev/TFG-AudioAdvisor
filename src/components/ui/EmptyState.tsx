@@ -4,27 +4,20 @@ import Link from 'next/link'
 interface Props {
   title: string
   description?: string
-  /** Optional CTA — internal route (Next `<Link>`) or external (anchor). */
   action?: {
     label: string
     href: string
     variant?: 'primary' | 'secondary'
   }
-  /** Second-row note shown smaller below the description (e.g. "or browse →"). */
   secondaryAction?: {
     label: string
     href: string
   }
-  /** Override the visual on the left. Defaults to the brand waveform SVG. */
+  /** Sustituye la ilustración por defecto (SVG de waveform). */
   visual?: ReactNode
 }
 
-/**
- * Reusable "nothing here yet" state for empty lists, missing filters, fresh
- * accounts, etc. The default visual is a small SVG of vertical bars echoing
- * the waveform motif used in the auth panel and the 3D Hero — so a blank
- * page still feels like part of the product.
- */
+/** Estado vacío reutilizable con ilustración SVG y acciones opcionales. */
 export function EmptyState({ title, description, action, secondaryAction, visual }: Props) {
   return (
     <div className="flex flex-col items-center text-center py-16 px-6">
@@ -59,11 +52,7 @@ export function EmptyState({ title, description, action, secondaryAction, visual
   )
 }
 
-/**
- * Decorative waveform built with SVG (16 vertical bars, deterministic
- * heights so SSR and client renders match). Plenty large to anchor a page,
- * not so large that it competes with the message.
- */
+/** Onda decorativa de 16 barras verticales con alturas deterministas. */
 function WaveformIllustration() {
   const bars = [22, 38, 30, 60, 48, 76, 56, 80, 58, 72, 44, 64, 36, 52, 28, 18]
   return (

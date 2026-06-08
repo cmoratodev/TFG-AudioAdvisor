@@ -121,10 +121,9 @@ export function AudioPlayer() {
     return () => window.removeEventListener('keydown', onKey);
   }, [currentTrack, togglePlay, toggleMute, playNext, playPrevious]);
 
-  // The seek strip switches between a SoundCloud-style mini wave (when the
-  // current track exposes peaks) and a regular slider as a fallback. We
-  // compute both bits of state unconditionally — early-returning before
-  // hook calls is what the rules of hooks forbid, not the other way around.
+  // Barra de búsqueda: mini-onda si hay picos disponibles, slider en caso
+  // contrario. Ambos estados se calculan sin condicionales por las reglas
+  // de los hooks.
   const peaks = useMemo(
     () => (currentTrack?.peaks && currentTrack.peaks.length > 0 ? currentTrack.peaks : null),
     [currentTrack?.peaks],

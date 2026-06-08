@@ -4,12 +4,7 @@ import { getCurrentUser } from '@/lib/auth-server'
 
 export const runtime = 'nodejs'
 
-/**
- * The bell pulls the latest 20 notifications + the total unread count for
- * the badge. We hydrate the actor (name/level) and the linked track title
- * here so the dropdown can render labels and CTAs without a second roundtrip
- * per row.
- */
+/** Devuelve las últimas N notificaciones + contador de no leídas. */
 const PAGE_SIZE = 20
 
 export async function GET() {
@@ -39,10 +34,7 @@ export async function GET() {
     }),
   ])
 
-  // Hydrate track titles in a single query. We don't include the comment
-  // body — the link takes the user to the track page where it's rendered
-  // anyway, and keeping the payload small matters when the bell is opened
-  // dozens of times per session.
+  // Carga los títulos de las pistas referenciadas en una sola consulta.
   const trackIds = Array.from(
     new Set(items.map((n) => n.trackId).filter((id): id is string => Boolean(id))),
   )

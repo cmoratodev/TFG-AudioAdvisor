@@ -35,10 +35,9 @@ export async function POST(req: Request) {
     select: { id: true, email: true, name: true, password: true },
   })
 
-  // Constant-time-ish response: even when the user doesn't exist (or signed
-  // up via OAuth and has no password), we tell the caller "if that email is
-  // on file, we sent a link". Spec the actual delivery only when both
-  // conditions match.
+  // Respuesta uniforme: se contesta lo mismo exista o no la cuenta para
+  // no permitir enumeración. El envío sólo ocurre si ambas condiciones se
+  // cumplen.
   if (user && user.password) {
     try {
       const { token, ttlMinutes } = await issueToken('reset', email)
@@ -53,8 +52,7 @@ export async function POST(req: Request) {
         }),
       })
     } catch (err) {
-      // Log but DON'T surface — keeps enumeration impossible and avoids
-      // burning the user's reset attempt if Resend hiccups.
+      // Se registra pero no se expone para evitar enumeración de cuentas.
       console.error('[forgot-password] email send failed:', err)
     }
   }

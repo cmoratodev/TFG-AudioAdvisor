@@ -23,12 +23,8 @@ function storagePathFromUrl(url: string): string | null {
 }
 
 /**
- * Upload (or replace) the signed-in user's avatar. Same bucket as the
- * tracks + covers — keeping all user-generated images in a single bucket
- * keeps the policy surface small. The previous avatar file is removed
- * after the new one is committed to the DB.
- *
- * POST = replace, DELETE = clear back to the colored-initial placeholder.
+ * Sube (POST) o elimina (DELETE) el avatar del usuario actual.
+ * El archivo anterior se borra tras persistir el nuevo en BD.
  */
 export async function POST(req: Request) {
   const user = await getCurrentUser()
@@ -95,7 +91,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'No se pudo guardar el avatar.' }, { status: 500 })
   }
 
-  // Best-effort cleanup of the previous file.
+  // Borrar el avatar anterior tras confirmar el nuevo.
   if (previous?.image) {
     const oldPath = storagePathFromUrl(previous.image)
     if (oldPath && oldPath !== newPath) {

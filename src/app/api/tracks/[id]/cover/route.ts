@@ -141,8 +141,7 @@ export async function PATCH(req: Request, context: RouteContext) {
     )
   }
 
-  // Drop the previous cover file once the DB switch is confirmed. Best
-  // effort — failure here is a small storage leak, not a user-facing bug.
+  // Borrar la portada anterior tras confirmar el cambio en BD.
   if (track.coverUrl) {
     const oldPath = storagePathFromUrl(track.coverUrl)
     if (oldPath && oldPath !== newPath) {

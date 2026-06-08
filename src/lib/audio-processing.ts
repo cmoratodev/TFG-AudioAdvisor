@@ -1,8 +1,5 @@
-// NOTE: this module is server-only by intent (uses `audio-decode` which
-// pulls in Node-only WASM workers + `Buffer`). We intentionally don't
-// `import 'server-only'` so the same code can run from one-off Node scripts
-// (e.g. `scripts/backfill-audio-processing.mts`). The route handlers that
-// consume it (`POST /api/tracks*`) already pin `runtime = 'nodejs'`.
+// Módulo server-only: usa `audio-decode` con dependencias Node (WASM,
+// Buffer). Las rutas que lo consumen fijan `runtime = 'nodejs'`.
 import decode from 'audio-decode'
 import type {
   AnalysisIssue,
@@ -12,20 +9,14 @@ import type {
 } from '@/lib/audio-analysis-types'
 
 /**
- * Server-side audio processing pipeline.
+ * Pipeline de procesamiento de audio en el servidor.
  *
- * On upload we decode the file ONCE and feed the same decoded sample data to
- * both the peak extractor (waveform UI) and the full analyzer (issue
- * detection). The client never re-downloads the audio for either purpose —
- * peaks and analysis travel through props from server components.
- *
- * Pure math: FFT, STFT, time-domain detectors and spectral checks were ported
- * verbatim from the previous Web Worker. No Web Audio / browser API is used
- * — the only browser concept we relied on (AudioContext.decodeAudioData) is
- * replaced by `audio-decode`, which yields `{ channelData, sampleRate }`.
+ * Decodifica el archivo una sola vez y reutiliza las muestras tanto para
+ * el cálculo de picos (visualización de onda) como para el análisis
+ * completo (detección de issues técnicos y métricas globales).
  */
 
-/** Number of visual bins in the rendered waveform. ~1800 matches SoundCloud. */
+/** Número de barras visuales de la forma de onda renderizada. */
 export const PEAKS_BIN_COUNT = 1800
 
 interface DecodedAudio {
@@ -90,7 +81,7 @@ function toMonoPcm(audio: DecodedAudio): Float32Array {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// Time-domain thresholds (Phase 1 + 2)
+// Umbrales del análisis temporal
 // ────────────────────────────────────────────────────────────────────────────
 
 const CLIP_THRESHOLD = 0.99
@@ -109,7 +100,7 @@ const SILENCE_MERGE_GAP_MS = 300
 const LOW_DYNAMICS_CREST_DB = 6
 
 // ────────────────────────────────────────────────────────────────────────────
-// Frequency-domain thresholds (Phase 3)
+// Umbrales del análisis espectral (FFT)
 // ────────────────────────────────────────────────────────────────────────────
 
 const FFT_SIZE = 4096 // ~93 ms window at 44.1 kHz; ~10.8 Hz bin resolution
@@ -703,12 +694,7 @@ function runAnalysis(pcm: Float32Array, sampleRate: number, duration: number): A
   return { issues, duration, sampleRate, metrics }
 }
 
-/**
- * `Infinity` / `-Infinity` survive JSON.stringify as `null`, which makes the
- * client side guards (`Number.isFinite(...)`) misread the data as "present
- * but invalid" rather than "absent". We sanitize once before persisting:
- * `-Infinity` becomes `null`, finite numbers stay numbers.
- */
+/** Normaliza valores no finitos antes de persistir el JSON. */
 function sanitizeMetrics(metrics: AnalysisMetrics): AnalysisMetrics {
   const sanitizeBand = (v: number): number => (Number.isFinite(v) ? v : -Infinity)
   return {
@@ -731,11 +717,8 @@ function sanitizeMetrics(metrics: AnalysisMetrics): AnalysisMetrics {
 }
 
 /**
- * Replace non-finite numbers with `null` so the result survives a Prisma
- * `Json` round-trip without becoming `null` silently. Postgres' JSON spec
- * doesn't allow `Infinity` / `NaN`; we lose the sign of the infinity but
- * the client only needs `Number.isFinite()` to make decisions, so the loss
- * is harmless.
+ * Reemplaza valores no finitos por `null` antes de serializar.
+ * PostgreSQL JSON no admite `Infinity` ni `NaN`.
  */
 export function serializeAnalysisForDb(result: AnalysisResult): unknown {
   const replacer = (_key: string, value: unknown) =>
@@ -744,13 +727,9 @@ export function serializeAnalysisForDb(result: AnalysisResult): unknown {
 }
 
 /**
- * Decode an uploaded audio file ONCE, then derive both the waveform peaks
- * and the full analysis (metrics + issues) from the same in-memory samples.
- * Decoding is by far the most expensive step, so doing it twice would
- * roughly double the upload latency.
- *
- * Analysis failures are non-fatal: peaks still come back, `analysis` is
- * `null`, and the client falls back to "Sin análisis disponible".
+ * Decodifica el archivo una sola vez y obtiene tanto los picos como el
+ * análisis completo a partir de las mismas muestras. Si el análisis falla,
+ * se devuelven los picos y `analysis: null`.
  */
 export async function processAudioBuffer(
   bytes: Buffer | ArrayBuffer | Uint8Array,

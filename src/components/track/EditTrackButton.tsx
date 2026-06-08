@@ -14,16 +14,7 @@ interface Props {
 
 const GENRES = ['Electrónica', 'Pop', 'Hip Hop', 'Acústico', 'Jazz', 'Rock', 'Otro'] as const
 
-/**
- * Pencil button + modal for editing a track's title and genre.
- *
- * Rendered only for the owner in TrackDetails. Modal closes on Escape /
- * backdrop click / successful save; on success we both toast the user and
- * `router.refresh()` so the server-rendered title block updates without a
- * hard reload. If the edited track is the one currently playing in the
- * global AudioPlayer, we patch its title in the Zustand store too so the
- * bottom bar stays consistent.
- */
+/** Botón con modal para editar título y género de una pista. */
 export function EditTrackButton({ trackId, initialTitle, initialGenre }: Props) {
   const router = useRouter()
   const replaceCurrentTrack = usePlayerStore((s) => s.replaceCurrentTrack)
@@ -36,9 +27,7 @@ export function EditTrackButton({ trackId, initialTitle, initialGenre }: Props) 
   const [error, setError] = useState<string | null>(null)
   const dialogRef = useRef<HTMLDivElement>(null)
 
-  // Reset form to the latest props every time the modal opens. Without this,
-  // a successful edit followed by a re-open would still show the previous
-  // values until the page navigates somewhere else.
+  // Resetea el formulario cada vez que el modal se abre.
   useEffect(() => {
     if (open) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -48,7 +37,7 @@ export function EditTrackButton({ trackId, initialTitle, initialGenre }: Props) 
     }
   }, [open, initialTitle, initialGenre])
 
-  // Close on Escape.
+  // Cierre con la tecla Escape.
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => {

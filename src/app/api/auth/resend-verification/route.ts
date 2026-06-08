@@ -44,8 +44,7 @@ export async function POST() {
 
     return NextResponse.json({ ok: true })
   } catch (err) {
-    // Surface the real reason (Resend rejection, missing env var, render
-    // crash) so the caller can show it instead of a generic 500.
+    // Expone el motivo real del fallo al cliente para mostrarlo en UI.
     const message = err instanceof Error ? err.message : 'Error desconocido al enviar el correo.'
     console.error('[resend-verification] failed:', err)
     return NextResponse.json({ error: message }, { status: 500 })

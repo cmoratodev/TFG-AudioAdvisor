@@ -9,27 +9,17 @@ import { RankBadge } from '@/components/ui/RankBadge';
 import { NotificationBell } from '@/components/layout/NotificationBell';
 
 /**
- * Top-level navigation.
+ * Barra de navegación principal.
  *
- * Two layouts share the same component:
- *   - `md` and up — every link inline, classic desktop bar.
- *   - Below `md` — hamburger collapses the link list into a popover so the
- *     logo / bell / rank / signout don't compete with 4 link labels for the
- *     360px-wide phone viewport.
+ * En `md` y superior muestra los enlaces inline. Por debajo de `md` los
+ * colapsa en un menú hamburguesa para que el logo, la campana y el chip de
+ * perfil sigan visibles sin saturar la barra en pantallas estrechas.
  *
- * The mobile menu auto-closes on route change so the user doesn't have to
- * tap twice (open → tap link → menu stays open over the new page).
- *
- * IMPORTANT — `<NotificationBell />` is rendered exactly ONCE, regardless
- * of breakpoint. Mounting it twice (one inside the desktop nav, another
- * inside the mobile cluster) creates two parallel Supabase Realtime
- * subscriptions with the same channel name, which Supabase rejects with
- * "cannot add postgres_changes callbacks after subscribe()". The bell
- * lives in the shared cluster on the right; only the surrounding controls
- * (link list vs hamburger button) swap based on viewport.
+ * `NotificationBell` se renderiza una sola vez en el cluster compartido a
+ * la derecha — montarlo dos veces (uno en cada bloque responsive) abriría
+ * dos suscripciones al mismo canal de Supabase Realtime y rompería el hook.
  */
 
-// Optional `icon` on each link; `LucideIcon` typing keeps the union narrow.
 type NavLink = {
   href: string;
   label: string;
@@ -51,16 +41,13 @@ export function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Close the mobile menu when the user navigates to a new page.
-  // `setMobileOpen(false)` inside an effect is exactly the React-19 lint
-  // rule's no-go pattern, but here it's syncing UI state to an external
-  // input (URL changes) which is what effects are for. Suppressed locally.
+  // Cierra el menú móvil al cambiar de ruta.
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMobileOpen(false);
   }, [pathname]);
 
-  // Close on outside click + Escape, same plumbing as the NotificationBell.
+  // Cierre por click fuera + tecla Escape.
   useEffect(() => {
     if (!mobileOpen) return;
     const onPointerDown = (e: PointerEvent) => {
@@ -84,8 +71,6 @@ export function Navbar() {
           Audio Advisor.
         </Link>
 
-        {/* Desktop nav — md and up. Only the LINKS live here; bell / profile
-            / signout sit in the shared cluster on the right. */}
         <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
           {NAV_LINKS.map(({ href, label, icon: Icon }) => (
             <Link
@@ -99,8 +84,6 @@ export function Navbar() {
           ))}
         </nav>
 
-        {/* Shared right cluster — visible on every breakpoint. The bell is
-            mounted ONCE here regardless of viewport. */}
         <div className="flex items-center gap-2 sm:gap-3 relative" ref={menuRef}>
           {status === 'loading' ? (
             <div className="w-32 h-7 bg-zinc-100 rounded animate-pulse" />
@@ -109,7 +92,6 @@ export function Navbar() {
               <span className="hidden md:inline-block h-5 w-px bg-zinc-200" aria-hidden />
               <NotificationBell viewerId={session.user.id} />
 
-              {/* Desktop-only profile chip + signout */}
               <Link
                 href={`/profile/${session.user.id}`}
                 className="hidden md:flex items-center gap-2 hover:bg-zinc-100 px-2 py-1 -mx-2 -my-1 rounded-lg transition-colors"
@@ -132,7 +114,6 @@ export function Navbar() {
                 <LogOut size={18} />
               </button>
 
-              {/* Mobile-only rank pill + hamburger trigger */}
               {session.user.level && (
                 <span className="md:hidden">
                   <RankBadge level={session.user.level} size="xs" showName={false} />
@@ -176,7 +157,6 @@ export function Navbar() {
             </>
           )}
 
-          {/* Mobile dropdown panel — anchored to the cluster's right edge. */}
           {mobileOpen && (
             <div
               role="dialog"

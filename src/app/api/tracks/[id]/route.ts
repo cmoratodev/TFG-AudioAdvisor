@@ -42,13 +42,7 @@ const ALLOWED_GENRES = new Set([
   'Otro',
 ])
 
-/**
- * Edit a track's metadata (title + genre). Owner-only.
- *
- * Only these two fields are mutable today — the audio file, peaks, analysis
- * and cover all have their own dedicated endpoints. Keeping the surface
- * narrow means we can validate tightly without juggling partial updates.
- */
+/** Edita los metadatos editables de una pista (título y género). */
 export async function PATCH(req: Request, context: RouteContext) {
   const user = await getCurrentUser()
   if (!user?.id) {
@@ -84,7 +78,7 @@ export async function PATCH(req: Request, context: RouteContext) {
   if (title.trim().length > 120) {
     return NextResponse.json({ error: 'El título es demasiado largo (máx. 120).' }, { status: 400 })
   }
-  // Genre is optional; only validate when supplied so the user can clear it.
+  // Género opcional; sólo se valida cuando viene definido.
   let nextGenre: string | null = null
   if (genre !== null && genre !== undefined) {
     if (typeof genre !== 'string') {
@@ -131,8 +125,7 @@ export async function DELETE(_req: Request, context: RouteContext) {
     return NextResponse.json({ error: 'No tienes permiso.' }, { status: 403 })
   }
 
-  // Best-effort: extract storage paths from each version's public URL.
-  // Public URLs look like .../storage/v1/object/public/tracks/<path>
+  // Reconstruir las rutas de Storage a partir de las URL públicas.
   const marker = `/object/public/${TRACKS_BUCKET}/`
   const paths = track.versions
     .map((v) => {

@@ -233,9 +233,8 @@ export function TrackDetails({
   const versionPeaks = selectedVersion?.peaks ?? [];
   const hasPeaks = versionPeaks.length > 0;
 
-  // SoundCloud-style: WaveSurfer renders straight from server-computed peaks
-  // + duration. No audio fetch happens here — the global <audio> handles
-  // playback, and this canvas is purely a visual cursor + click target.
+  // Renderiza la onda a partir de los picos precomputados en el servidor.
+  // El audio no se descarga aquí (lo gestiona el reproductor global).
   useEffect(() => {
     if (!waveformRef.current) return;
 

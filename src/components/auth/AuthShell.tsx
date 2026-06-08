@@ -125,8 +125,7 @@ function DecorativeWaveform() {
   )
 }
 
-// 80 deterministic "peaks" — gives the panel a SoundCloud-ish silhouette
-// without bringing real audio data in here.
+// 80 alturas deterministas para la onda decorativa del panel.
 const WAVE_HEIGHTS = [
   18, 32, 24, 56, 41, 68, 50, 72, 60, 82, 70, 64, 78, 55, 88, 72, 60, 92, 68, 80,
   56, 74, 62, 84, 50, 66, 78, 58, 72, 64, 80, 70, 62, 86, 54, 76, 68, 90, 74, 60,

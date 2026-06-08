@@ -6,8 +6,7 @@ import { processAudioBuffer, serializeAnalysisForDb } from '@/lib/audio-processi
 import type { Prisma } from '@prisma/client'
 
 export const runtime = 'nodejs'
-// Reprocesses EVERY version of a track sequentially. Easily blows past the
-// default 10 s on tracks with multiple versions. Vercel Hobby caps at 60 s.
+// Procesa cada versión secuencialmente; ampliamos el timeout serverless.
 export const maxDuration = 60
 
 interface RouteContext {
@@ -20,20 +19,7 @@ function storagePathFromUrl(url: string): string | null {
   return idx >= 0 ? url.slice(idx + marker.length) : null
 }
 
-/**
- * Re-run the server-side audio pipeline (peaks + analysis) for every version
- * of a track. Owner-only.
- *
- * Use case: the FFT detectors or the spectral thresholds get tweaked in
- * code and the producer wants the existing track to benefit from the
- * improved analysis without re-uploading. Equivalent to running
- * `scripts/backfill-audio-processing.mts` for one track only.
- *
- * Heavy operation: each version downloads the full audio from Storage and
- * decodes it. We re-process versions sequentially (one at a time) to keep
- * memory predictable; a 5-min track at 44.1 kHz / stereo is ~50 MB in RAM
- * while decoded.
- */
+/** Re-procesa picos y análisis FFT de cada versión de la pista (sólo dueño). */
 export async function POST(_req: Request, context: RouteContext) {
   const user = await getCurrentUser()
   if (!user?.id) {

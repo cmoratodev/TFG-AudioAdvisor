@@ -24,32 +24,22 @@ export interface UseNotifications {
 }
 
 /**
- * Per-user notifications hook. Loads the latest page from `/api/notifications`
- * and subscribes to inserts on the Notification table via Supabase Realtime.
- * The subscription is filtered by `recipientId` so a viewer only sees their
- * own inserts even though RLS is open (see migration
- * `20260528150100_notifications_realtime`).
- *
- * On every insert we just re-fetch the list rather than hydrating a single
- * row in place. The list is small (20 items), the cost is negligible, and it
- * keeps actor/track joins consistent without a second query path.
+ * Hook de notificaciones por usuario. Carga la lista desde `/api/notifications`
+ * y se suscribe a los INSERT en la tabla `Notification` vía Supabase Realtime,
+ * filtrados por `recipientId`. Cada evento dispara un re-fetch en lugar de
+ * insertar la fila en memoria, así no hace falta replicar los joins.
  */
 export function useNotifications(viewerId: string | null | undefined): UseNotifications {
   const [notifications, setNotifications] = useState<NotificationEntry[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [loading, setLoading] = useState(false)
 
-  // We grab the latest fetch ref so out-of-order responses don't overwrite a
-  // fresher snapshot — e.g. realtime fires twice quickly, the second response
-  // could otherwise land before the first.
+  // Secuencia para descartar respuestas obsoletas si llegan fuera de orden.
   const fetchSeqRef = useRef(0)
 
   const refresh = useCallback(async () => {
     const seq = ++fetchSeqRef.current
     if (!viewerId) {
-      // The setState calls here are intentional on logout — emptying the
-      // bell — and happen outside an effect body so the React 19 effect
-      // lint rule is satisfied.
       setNotifications([])
       setUnreadCount(0)
       return
@@ -69,22 +59,15 @@ export function useNotifications(viewerId: string | null | undefined): UseNotifi
     }
   }, [viewerId])
 
-  // Initial load + reload whenever the viewer changes (login / logout).
-  // `refresh` calls setLoading(true) synchronously, which trips React 19's
-  // `set-state-in-effect` lint rule. This is the canonical "fetch on mount"
-  // pattern; the rule is meant for derived state, not for syncing with an
-  // external system (the API), which is exactly what an effect is for.
+  // Carga inicial y recarga al cambiar de usuario.
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void refresh()
   }, [refresh])
 
-  // Realtime: subscribe to inserts addressed to this viewer.
-  // The channel name carries a `Date.now()` suffix so a fast unmount→remount
-  // cycle (React 19 Strict Mode in dev, or two consumers mounting at once)
-  // can't collide on the same internal Supabase channel — which would
-  // surface as "cannot add postgres_changes callbacks after subscribe()".
-  // Each effect run owns its own channel; cleanup detaches it deterministically.
+  // Suscripción Realtime a los INSERT dirigidos a este usuario. El sufijo
+  // `Date.now()` en el nombre del canal evita colisiones si el efecto se
+  // ejecuta dos veces seguidas (Strict Mode en desarrollo).
   useEffect(() => {
     if (!viewerId) return
     const channelName = `notifications-${viewerId}-${Date.now()}`
@@ -114,7 +97,7 @@ export function useNotifications(viewerId: string | null | undefined): UseNotifi
   const markRead = useCallback(
     async (ids: string[]) => {
       if (ids.length === 0) return
-      // Optimistic update — drop the unread highlight immediately.
+      // Actualización optimista: quita el badge de no leído al instante.
       setNotifications((prev) =>
         prev.map((n) => (ids.includes(n.id) && !n.readAt ? { ...n, readAt: new Date().toISOString() } : n)),
       )
@@ -127,7 +110,7 @@ export function useNotifications(viewerId: string | null | undefined): UseNotifi
         })
       } catch (err) {
         console.error('[notifications] markRead failed:', err)
-        // Roll back to the source of truth on error.
+        // Revertir al estado del servidor si falla.
         void refresh()
       }
     },

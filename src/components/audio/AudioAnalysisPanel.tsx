@@ -35,24 +35,13 @@ const formatDb = (db: number): string => {
 }
 
 interface Props {
-  /**
-   * Server-computed analysis. `null` when the upload-time decode failed or
-   * for legacy versions that haven't been backfilled — we surface the empty
-   * state instead of running anything on the client.
-   */
+  /** Análisis precomputado en el servidor. `null` si la decodificación falló. */
   result: AnalysisResult | null
-  /**
-   * Called when the user clicks "Comentar" on an issue. The parent should
-   * open the comment draft at the given timestamp with `suggestion` pre-filled.
-   */
+  /** Callback al pulsar "Comentar" en un issue. */
   onCommentIssue: (issue: AnalysisIssue) => void
-  /** Optional: highlighted/active issue id (e.g. the one currently being drafted). */
+  /** Id del issue activo, si lo hay (resaltado visual). */
   activeIssueId?: string | null
-  /**
-   * Track id and ownership flag to enable the "Re-analizar" admin action.
-   * Hidden for non-owners. Triggers `/api/tracks/[id]/reanalyze` which
-   * re-runs the FFT + detectors on every version's stored audio.
-   */
+  /** Id y propiedad para mostrar el botón "Re-analizar" sólo al dueño. */
   trackId?: string
   isOwner?: boolean
 }
@@ -68,12 +57,7 @@ const severityClass: Record<AnalysisIssue['severity'], { dot: string; chip: stri
   },
 }
 
-/**
- * Group consecutive same-kind issues that are close in time into one row.
- * 10 s is roughly a "musical phrase" — events further apart probably belong
- * to different sections (verse vs chorus), closer events are essentially the
- * same problem repeating.
- */
+/** Agrupa issues consecutivos del mismo tipo separados por menos de N segundos. */
 const CLUSTER_GAP_SECONDS = 10
 
 function clusterIssues(issues: AnalysisIssue[]): AnalysisIssue[][] {
@@ -86,7 +70,7 @@ function clusterIssues(issues: AnalysisIssue[]): AnalysisIssue[][] {
     const last = current[current.length - 1]
     const sameKind = next.kind === last.kind
     const closeInTime = next.start - last.end <= CLUSTER_GAP_SECONDS
-    // Never cluster global issues (they're already track-wide singletons).
+    // Los issues globales no se agrupan: ya cubren toda la pista.
     const bothLocal = next.scope === 'local' && last.scope === 'local'
     if (sameKind && closeInTime && bothLocal) {
       current.push(next)
@@ -397,9 +381,7 @@ function ClusterRow({ cluster, isActive, onComment }: ClusterRowProps) {
   const cls = severityClass[first.severity]
   const Icon = first.severity === 'critical' ? AlertOctagon : AlertTriangle
 
-  // Use the first issue's metadata as the representative; augment the
-  // suggestion so the user understands they're commenting on a region with
-  // multiple occurrences.
+  // Issue representativo del cluster con sugerencia agregada.
   const summaryIssue: AnalysisIssue = {
     ...first,
     suggestion: `Hay ${cluster.length} eventos de "${first.title.toLowerCase()}" entre ${formatClock(

@@ -14,21 +14,16 @@ interface Props {
 }
 
 /**
- * Mini interactive waveform used inside the global AudioPlayer's seek strip.
- * SoundCloud-style: each bar represents a peak; bars to the left of the
- * playhead get the brand accent color, the rest stay zinc.
- *
- * We downsample the input peaks to a fixed number of visual bars (60) so the
- * mini wave stays readable at any width and reuses the same array regardless
- * of the source resolution (1800 bins for new tracks, fewer for backfilled).
+ * Mini-onda interactiva del reproductor global. Los picos se sub-muestrean
+ * a un número fijo de barras (60) para que la visualización sea legible a
+ * cualquier ancho, independientemente de la resolución original.
  */
 const VISIBLE_BARS = 60
 
 export function PlayerWaveSeek({ peaks, currentTime, duration, onSeek }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
 
-  // Downsample the peaks array to VISIBLE_BARS values, taking the max within
-  // each bin. We memoize so it only re-runs when the source changes.
+  // Sub-muestreo a VISIBLE_BARS valores tomando el máximo de cada bin.
   const bars = useMemo(() => {
     if (peaks.length === 0) return [] as number[]
     if (peaks.length <= VISIBLE_BARS) return peaks
@@ -62,7 +57,7 @@ export function PlayerWaveSeek({ peaks, currentTime, duration, onSeek }: Props) 
   )
 
   if (bars.length === 0) {
-    // No peaks for this track — caller renders the regular slider as fallback.
+    // Sin picos disponibles para esta pista.
     return null
   }
 

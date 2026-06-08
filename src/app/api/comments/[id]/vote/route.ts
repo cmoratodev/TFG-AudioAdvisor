@@ -9,9 +9,8 @@ interface RouteContext {
 }
 
 /**
- * Mark a comment as "Útil". Only the owner of the parent track can do this
- * (Option A from the rank-system design). The action is irreversible — once
- * granted, the +25 XP stays. This sidesteps any toggle-based XP farming.
+ * Marca un comentario como "Útil" (sólo el dueño de la pista padre).
+ * La acción es irreversible; otorga +25 XP al autor del comentario.
  */
 export async function POST(_req: Request, context: RouteContext) {
   const user = await getCurrentUser()
@@ -48,7 +47,7 @@ export async function POST(_req: Request, context: RouteContext) {
     )
   }
 
-  // Idempotent: if a vote already exists, just return the current state.
+  // Idempotente: si ya existe el voto, devuelve el estado actual.
   const existing = await prisma.vote.findUnique({
     where: { commentId_voterId: { commentId, voterId: user.id } },
     select: { id: true },

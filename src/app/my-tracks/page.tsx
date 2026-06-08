@@ -20,8 +20,6 @@ const formatClock = (seconds: number): string => {
   return `${m}:${s.toString().padStart(2, '0')}`;
 };
 
-// Genres shared with the upload form ([dashboard/page.tsx]). Kept in lockstep
-// manually for now; if this grows further, extract to `src/lib/genres.ts`.
 const GENRES = ['Electrónica', 'Pop', 'Hip Hop', 'Acústico', 'Jazz', 'Rock', 'Otro'] as const;
 const ALL_GENRE = 'Todos';
 type GenreFilter = (typeof GENRES)[number] | typeof ALL_GENRE;

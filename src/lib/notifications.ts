@@ -11,10 +11,9 @@ interface CreateNotificationInput {
 }
 
 /**
- * Persists a Notification, defensively skipping self-notifications and
- * swallowing errors so a logging hiccup never causes the user-visible action
- * (comment, vote) to fail. Realtime delivery is handled by Supabase: the
- * inserted row triggers the bell to refresh.
+ * Persiste una notificación. Ignora auto-notificaciones y captura errores
+ * para no romper la acción que la disparó (comentario, voto, etc.). La
+ * entrega en tiempo real la gestiona Supabase Realtime sobre el INSERT.
  */
 export async function createNotification(input: CreateNotificationInput): Promise<void> {
   if (input.recipientId === input.actorId) return
